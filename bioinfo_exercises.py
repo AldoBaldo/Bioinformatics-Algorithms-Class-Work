@@ -6,7 +6,7 @@ import array
 import itertools
 import time
 
-def PatternCount(sequence, pattern):
+def PatternCount(sequence, pattern, max_hamming_distance=0):
 
     count = 0
     len_sequence = len(sequence)
@@ -14,7 +14,7 @@ def PatternCount(sequence, pattern):
     srch_count = len_sequence - len_pattern + 1
 
     for i in range(0, srch_count):
-        if sequence[i:i+len_pattern] == pattern:
+        if FindHammingDistance(pattern, sequence[i:i+len_pattern]) <= max_hamming_distance:
             count += 1
 
     return count
@@ -230,7 +230,21 @@ def FindApproximatePatternMatches(pattern, max_hamming_distance, text):
 
 def FindMostFrequentWithMismatches(k, d, text):
 
+    '''Look for all possible patterns in the given text'''
 
+    pattern_counts = {}
+    max_count_found = 0
+
+    for i in range(4**k):
+        pattern = NumberToPattern(i, k)
+        pattern_count = PatternCount(text, pattern, d)
+        if pattern_count == max_count_found:
+            pattern_counts.append(pattern)
+        elif pattern_count > max_count_found:
+            pattern_counts = [pattern]
+            max_count_found = pattern_count
+
+    return pattern_counts
 
 # End of FindMostFrequentWithMismatches()
 
