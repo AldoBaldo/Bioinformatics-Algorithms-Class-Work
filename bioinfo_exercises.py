@@ -232,7 +232,7 @@ def FindMostFrequentWithMismatches(k, d, text):
 
     '''Look for all possible patterns in the given text'''
 
-    pattern_counts = {}
+    pattern_counts = []
     max_count_found = 0
 
     for i in range(4**k):
@@ -247,6 +247,63 @@ def FindMostFrequentWithMismatches(k, d, text):
     return pattern_counts
 
 # End of FindMostFrequentWithMismatches()
+
+FindOtherBasesArray = [
+    None,
+    ['C', 'G', 'T'],   # All bases other than 'A' (lowest 3 bits are 001)
+    None,
+    ['A', 'G', 'T'],   # All bases other than 'C' (lowest 3 bits are 011)
+    ['A', 'C', 'G'],   # All bases other than 'T' (lowest 3 bits are 100)
+    None,
+    None,
+    ['A', 'C', 'T']    # All bases other than 'G' (lowest 3 bits are 111)
+]
+def FindOtherBases(base):
+
+    return FindOtherBasesArray[ord(base) & 0b111]
+
+# End of FindOtherBases
+
+def FindImmediateNeighbors(pattern):
+
+    neighborhood = [pattern]
+
+    for i in range(len(pattern)):
+        for base in FindOtherBases(pattern[i]):
+            neighborhood.append(pattern[:i] + base + pattern[i+1:])
+
+    return neighborhood
+
+# End of FindImmediateNeighbors()
+
+def FindNeighbors(pattern, d):
+
+    if d == 0:
+        return [pattern]
+    if len(pattern) == 1:
+        return ['A', 'C', 'G', 'T']
+
+    neighborhood = []
+    suffix_pattern = pattern[1:]
+    suffix_neighbors = FindNeighbors(suffix_pattern, d)
+    for suf_neighbor in suffix_neighbors:
+        if FindHammingDistance(suffix_pattern, suf_neighbor) < d:
+            for base in ['A', 'C', 'G', 'T']:
+            #for base in ['T', 'G', 'C', 'A']:
+            #for base in ['T', 'G', 'C', 'A']:
+                neighborhood.append(base + suf_neighbor)
+        else:
+            neighborhood.append(pattern[0] + suf_neighbor)
+
+    return neighborhood
+
+# End of FindNeighbors()
+
+def FindMostFrequentWithMismatchesBetter(k, d, text):
+
+    pass
+
+# End of FindMostFrequentWithMismatchesFaster()
 
 def Exercise_ba1b_FindMostFrequentString():
 
@@ -357,16 +414,30 @@ def Exercise_ba1i_FindMostFrequentWithMismatches():
     '''Find the most frequent k-mers in a text with at most d mismatches.'''
 
     parser = argparse.ArgumentParser(description=Exercise_ba1i_FindMostFrequentWithMismatches.__doc__)
-    parser.add_argument('k', type=str, help="The length of the sequence to search for")
+    parser.add_argument('k', type=int, help="The length of the sequence to search for")
     parser.add_argument('d', type=int, help="The max Hamming distance")
     parser.add_argument('text', type=str, help="The text to search in")
 
     args = parser.parse_args()
 
-    result = FindMostFrequentWithMismatches(args.k, args.d, args.text)
+    result = FindMostFrequentWithMismatchesBetter(args.k, args.d, args.text)
     print 'The most frequent k-mers in the text with mismatches are:', ' '.join(result)
 
 # End of Exercise_ba1i_FindMostFrequentWithMismatches()
+
+def Exercise_ba1n_FindNeighbors():
+    '''Find the most frequent k-mers in a text with at most d mismatches.'''
+
+    parser = argparse.ArgumentParser(description=Exercise_ba1n_FindNeighbors.__doc__)
+    parser.add_argument('d', type=int, help="The max Hamming distance")
+    parser.add_argument('pattern', type=str, help="The pattern to find neighbors for")
+
+    args = parser.parse_args()
+
+    result = FindNeighbors(args.pattern, args.d)
+    print 'The neighbors of', args.pattern, 'are:', ' '.join(result)
+
+# End of Exercise_ba1n_FindNeighbors()
 
 
 
@@ -386,4 +457,6 @@ if __name__ == "__main__":
     # Exercise_ba1f_FindMinimumSkews()
     # Exercise_ba1g_FindHammingDistance()
     # Exercise_ba1h_FindApproximatePatternMatches()
-    Exercise_ba1i_FindMostFrequentWithMismatches()
+    # Exercise_ba1i_FindMostFrequentWithMismatches()
+
+    Exercise_ba1n_FindNeighbors()
