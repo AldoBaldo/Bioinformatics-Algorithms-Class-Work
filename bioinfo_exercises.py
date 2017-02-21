@@ -6,6 +6,28 @@ import array
 import itertools
 import time
 
+def TestResults(my_results, expected_results):
+
+    error_count = 0
+
+    if len(my_results) != len(expected_results):
+        print "Results differ in length.", len(my_results), 'vs', len(expected_results)
+        return
+
+    for item in my_results:
+        if item not in expected_results:
+            error_count += 1
+            print "Item", item, "from my results is not found in expected results"
+
+    for item in expected_results:
+        if item not in my_results:
+            error_count += 1
+            print "Item", item, "from expected results is not found in my results"
+
+    print error_count, "errors found"
+
+# End of Test Results()
+
 def PatternCount(sequence, pattern, max_hamming_distance=0):
 
     count = 0
@@ -213,6 +235,27 @@ def FindHammingDistance(pattern_a, pattern_b):
 
 # End of FindHammingDistance()
 
+def FindSumOfHammingDistances(pattern, dna):
+
+    hamming_sum = 0
+    k = len(pattern)
+    n = len(dna[0])    # Assume all strands in dna are the same length
+
+    for strand in dna:
+        min_hamming = k
+        for i in range(n-k+1):
+            motif = strand[i:i+k]
+            hamming_distance = FindHammingDistance(pattern, motif)
+            min_hamming = min(min_hamming, hamming_distance)
+            if min_hamming == 0:
+                break
+        hamming_sum += min_hamming
+        print "  For pattern <" + pattern + "> in strand <" + strand + ">, the min hamming distance is:", min_hamming
+
+    return hamming_sum
+
+# End of FindSumOfHammingDistances()
+
 def FindApproximatePatternMatches(pattern, max_hamming_distance, text):
 
     result = []
@@ -248,6 +291,29 @@ def FindMostFrequentWithMismatches(k, d, text):
 
 # End of FindMostFrequentWithMismatches()
 
+def FindMostFrequentWithMismatchesAndReverseCompiliment(k, d, text):
+
+    '''Look for all possible patterns in the given text'''
+
+    pattern_counts = []
+    max_count_found = 0
+
+    for i in range(4**k):
+        pattern = NumberToPattern(i, k)
+        reverse_compliment = ReverseCompliment(pattern)
+        pattern_count = PatternCount(text, pattern, d)
+        pattern_count += PatternCount(text, reverse_compliment, d)
+        if pattern_count == max_count_found:
+            pattern_counts.append(pattern)
+        elif pattern_count > max_count_found:
+            pattern_counts = [pattern]
+            max_count_found = pattern_count
+
+    return pattern_counts
+
+# End of FindMostFrequentWithMismatchesAndReverseCompiliment()
+
+
 FindOtherBasesArray = [
     None,
     ['C', 'G', 'T'],   # All bases other than 'A' (lowest 3 bits are 001)
@@ -276,7 +342,7 @@ def FindImmediateNeighbors(pattern):
 
 # End of FindImmediateNeighbors()
 
-def FindNeighbors(pattern, d):
+def FindNeighbors(pattern, d, next_base_list=['A', 'C', 'G', 'T']):
 
     if d == 0:
         return [pattern]
@@ -285,12 +351,10 @@ def FindNeighbors(pattern, d):
 
     neighborhood = []
     suffix_pattern = pattern[1:]
-    suffix_neighbors = FindNeighbors(suffix_pattern, d)
+    suffix_neighbors = FindNeighbors(suffix_pattern, d, next_base_list=next_base_list)
     for suf_neighbor in suffix_neighbors:
         if FindHammingDistance(suffix_pattern, suf_neighbor) < d:
-            for base in ['A', 'C', 'G', 'T']:
-            #for base in ['T', 'G', 'C', 'A']:
-            #for base in ['T', 'G', 'C', 'A']:
+            for base in next_base_list:
                 neighborhood.append(base + suf_neighbor)
         else:
             neighborhood.append(pattern[0] + suf_neighbor)
@@ -299,11 +363,78 @@ def FindNeighbors(pattern, d):
 
 # End of FindNeighbors()
 
-def FindMostFrequentWithMismatchesBetter(k, d, text):
+def FindPatternFrequencies(k, text):
 
-    pass
+    pattern_counts = array.array('I', itertools.repeat(0, 4**k))
+    len_text = len(text)
+    srch_count = len_text - k + 1
 
-# End of FindMostFrequentWithMismatchesFaster()
+    for i in range(0, srch_count):
+        cur_pattern = text[i:i+k]
+        pattern_counts[PatternToNumber(cur_pattern)] += 1
+
+    return pattern_counts
+
+# End of FindPatternFrequencies()
+
+def FindImplantedMotifs(k, d, dna):
+
+    pattern_lists = []
+
+    # Find all of the patterns per dna strand
+    for strand in dna:
+        pattern_list = []
+        for i in range(len(strand)-k+1):
+            pattern = strand[i:i+k]
+            pattern_list += FindNeighbors(pattern, d)
+        pattern_lists.append(pattern_list)
+
+    # Find patterns that are in all lists
+    first_list = pattern_lists[0]
+    remaining_lists = pattern_lists[1:]
+    unique_patterns = []
+    for pattern in first_list:
+        pattern_in_all_lists = True
+        for other_list in remaining_lists:
+            if pattern not in other_list:
+                pattern_in_all_lists = False
+        if pattern_in_all_lists and pattern not in unique_patterns:
+            unique_patterns.append(pattern)
+
+    return sorted(unique_patterns)
+
+# End of FindImplantedMotifs()
+
+def FindMedianString(k, dna):
+
+    t = len(dna)
+    distance = k * t
+    median = ''
+    saved_median_distances = {}
+    saved_medians_of_min_distance = []
+
+    # Find distance for each possible k-mer
+    for i in range(4**k):
+        pattern = NumberToPattern(i, k)
+        print "Finding hamming sum for <" + pattern + ">"
+        new_distance = FindSumOfHammingDistances(pattern, dna)
+        print "New hamming sum is:", new_distance
+        saved_median_distances[pattern] = new_distance
+        if new_distance < distance:
+            distance = new_distance
+            median = pattern
+            saved_medians_of_min_distance = [pattern]
+        elif new_distance == distance:
+            saved_medians_of_min_distance.append(pattern)
+
+    for pattern in sorted(saved_median_distances):
+        print "The hamming sum for >" + pattern + "> is:", saved_median_distances[pattern]
+
+    print "The following patterns share a min hamming distance of:", distance, ":", ' '.join(saved_medians_of_min_distance)
+
+    return median
+
+# End of FindMedianString()
 
 def Exercise_ba1b_FindMostFrequentString():
 
@@ -420,10 +551,92 @@ def Exercise_ba1i_FindMostFrequentWithMismatches():
 
     args = parser.parse_args()
 
-    result = FindMostFrequentWithMismatchesBetter(args.k, args.d, args.text)
+    result = FindMostFrequentWithMismatches(args.k, args.d, args.text)
     print 'The most frequent k-mers in the text with mismatches are:', ' '.join(result)
 
 # End of Exercise_ba1i_FindMostFrequentWithMismatches()
+
+def Exercise_ba1j_FindMostFrequentWithMismatchesAndReverseCompiliment():
+    '''Find the most frequent k-mers in a text with at most d mismatches,
+    and including their reverse compliments.'''
+
+    parser = argparse.ArgumentParser(description=Exercise_ba1j_FindMostFrequentWithMismatchesAndReverseCompiliment.__doc__)
+    parser.add_argument('k', type=int, help="The length of the sequence to search for")
+    parser.add_argument('d', type=int, help="The max Hamming distance")
+    parser.add_argument('text', type=str, help="The text to search in")
+
+    args = parser.parse_args()
+
+    result = FindMostFrequentWithMismatchesAndReverseCompiliment(args.k, args.d, args.text)
+    print 'The most frequent k-mers in the text with mismatches and reverse compliments are:', ' '.join(result)
+
+# End of Exercise_ba1j_FindMostFrequentWithMismatchesAndReverseCompiliment()
+
+def Exercise_ba1k_CountingFrequencies():
+    '''Return a frequency array with the frequencies of all patterns of length k.'''
+
+    parser = argparse.ArgumentParser(description=Exercise_ba1k_CountingFrequencies.__doc__)
+    parser.add_argument('k', type=int, help="The length of the pattern to count")
+    parser.add_argument('text', type=str, help="The text to find the patterns in")
+
+    args = parser.parse_args()
+
+    result = FindPatternFrequencies(args.k, args.text)
+    print 'The frequency array for the given k and text are:', ' '.join([str(x) for x in result])
+
+    # Test the results when the results are known
+#    with open('ba1k_results.txt', 'r') as expected_results_fh:
+#        expected_results = []
+#        for line in expected_results_fh.readlines():
+#            expected_results += [int(x) for x in line.split()]
+#
+#    TestResults(result, expected_results)
+
+# End of Exercise_ba1k_CountingFrequencies()
+
+def Exercise_ba1l_PatternToNumber():
+
+    '''Return a unique number for the specified pattern.'''
+
+    parser = argparse.ArgumentParser(description=Exercise_ba1k_CountingFrequencies.__doc__)
+    parser.add_argument('pattern', type=str, help="The pattern to index")
+
+    args = parser.parse_args()
+
+    result = PatternToNumber(args.pattern)
+    print "The unique number for the pattern is:", result
+
+    # Test the result
+    pattern_back = NumberToPattern(result, len(args.pattern))
+    if pattern_back == args.pattern:
+        print "Test passed for PatternToNumber"
+    else:
+        print "Test failed for PatternToNumber"
+
+# End of Exercise_ba1l_PatternToNumber()
+
+def Exercise_ba1m_NumberToPattern():
+
+    '''Reverse the "PatternToNumber" transformation and retrieve the correct pattern
+    for the given number, given k.'''
+
+    parser = argparse.ArgumentParser(description=Exercise_ba1k_CountingFrequencies.__doc__)
+    parser.add_argument('n', type=int, help="The number for the pattern")
+    parser.add_argument('k', type=int, help="The length of the sequence used in calculating n.")
+
+    args = parser.parse_args()
+
+    result = NumberToPattern(args.n, args.k)
+    print 'The pattern for n, given k, is:', result
+
+    # Test the result
+    number_back = PatternToNumber(result)
+    if number_back == args.n and len(result) == args.k:
+        print "Test passed for NumberToPattern"
+    else:
+        print "Test failed for NumberToPattern"
+
+# End of Exercise_ba1m_NumberToPattern()
 
 def Exercise_ba1n_FindNeighbors():
     '''Find the most frequent k-mers in a text with at most d mismatches.'''
@@ -437,8 +650,86 @@ def Exercise_ba1n_FindNeighbors():
     result = FindNeighbors(args.pattern, args.d)
     print 'The neighbors of', args.pattern, 'are:', ' '.join(result)
 
+    #expected_results = ["CCG", "TCG", "GCG", "AAG", "ATG", "AGG", "ACA", "ACC", "ACT", "ACG"]
+
+    #with open('ba1n_test_output.txt', 'r') as expected_results_fh:
+    #    expected_results = [x.strip() for x in expected_results_fh.readlines() if len(x.strip()) > 0]
+
+    #TestResults(result, expected_results)
+
 # End of Exercise_ba1n_FindNeighbors()
 
+def Exercise_ba2a_FindImplantedMotifs():
+    '''Find k-mer motifs with at most d mismatches in the given DNA sequences.'''
+
+    parser = argparse.ArgumentParser(description=Exercise_ba2a_FindImplantedMotifs.__doc__)
+    parser.add_argument('k', type=int, help="The length of patterns to look for")
+    parser.add_argument('d', type=int, help="The max Hamming distance")
+    parser.add_argument('dna', type=str, nargs='+', help="A list of DNA sequences to search in")
+
+    args = parser.parse_args()
+
+    result = FindImplantedMotifs(args.k, args.d, args.dna)
+    print 'The implanted motifs are', ' '.join(result)
+
+#    with open('ba2a_2_test_results.txt', 'r') as expected_results_fh:
+#        expected_results = expected_results_fh.readline().split()
+#    TestResults(result, expected_results)
+
+# End of Exercise_ba2a_FindImplantedMotifs()
+
+def Exercise_ba2b_FindMedianString():
+    '''Find a string that minimizes the hamming distance between itself and any
+    pattern in a list of DNA sequences.'''
+
+    parser = argparse.ArgumentParser(description=Exercise_ba2b_FindMedianString.__doc__)
+    parser.add_argument('k', type=int, help="The length of patterns to look for")
+    parser.add_argument('dna', type=str, nargs='+', help="A list of DNA sequences to search in")
+
+    args = parser.parse_args()
+
+    result = FindMedianString(args.k, args.dna)
+    print 'The median string is:', result
+
+#    with open('ba2a_2_test_results.txt', 'r') as expected_results_fh:
+#        expected_results = expected_results_fh.readline().split()
+#    TestResults(result, expected_results)
+
+# End of Exercise_ba2b_FindMedianString()
+
+def FindUniqueBaseLists(start = ['A', 'C', 'G', 'T']):
+
+    if len(start) <= 1:
+        return [start]
+
+    result = []
+
+    for base in start:
+        new_pool = start[:]
+        new_pool.remove(base)
+        result += [[base] + x for x in FindUniqueBaseLists(new_pool)]
+
+    return result
+
+# End of FindUniqueBaseLists()
+
+def TestCombo():
+
+    combos = FindUniqueBaseLists()
+    expected_results = ["CCG", "TCG", "GCG", "AAG", "ATG", "AGG", "ACA", "ACC", "ACT", "ACG"]
+    winners = []
+
+    for combo in combos:
+        result = FindNeighbors("ACG", 1, next_base_list = combo)
+        print "For combo:", combo
+        print "                Expected results are:", expected_results
+        print "                My results are      :", result
+        if result == expected_results:
+            winners.append(combo)
+
+    print "The winning combos are:", winners
+
+# End of TestCombo()
 
 
 if __name__ == "__main__":
@@ -458,5 +749,11 @@ if __name__ == "__main__":
     # Exercise_ba1g_FindHammingDistance()
     # Exercise_ba1h_FindApproximatePatternMatches()
     # Exercise_ba1i_FindMostFrequentWithMismatches()
+    # Exercise_ba1j_FindMostFrequentWithMismatchesAndReverseCompiliment()
+    # Exercise_ba1k_CountingFrequencies()
+    # Exercise_ba1l_PatternToNumber()
+    # Exercise_ba1m_NumberToPattern()
+    # Exercise_ba1n_FindNeighbors()
 
-    Exercise_ba1n_FindNeighbors()
+    # Exercise_ba2a_FindImplantedMotifs()
+    Exercise_ba2b_FindMedianString()
