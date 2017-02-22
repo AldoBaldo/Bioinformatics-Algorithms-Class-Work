@@ -436,6 +436,24 @@ def FindMedianString(k, dna):
 
 # End of FindMedianString()
 
+def ProfileMostProbableKmer(text, k, profile):
+
+    result = ''
+    best_probability = 0
+
+    for i in range (len(text) - k + 1):
+        kmer = text[i:i+k]
+        cur_probability = reduce(lambda x, y: x*y,
+                                 [profile[BaseToNumber(base)][i] for i, base in enumerate(kmer)])
+
+        if cur_probability > best_probability:
+            best_probability = cur_probability
+            result = kmer
+
+    return result
+
+# End of ProfileMostProbableKmer()
+
 def Exercise_ba1b_FindMostFrequentString():
 
     parser = argparse.ArgumentParser(description="Find the most frequent patterns of length k")
@@ -697,6 +715,30 @@ def Exercise_ba2b_FindMedianString():
 
 # End of Exercise_ba2b_FindMedianString()
 
+def Exercise_ba2c_ProfileMostProbableKmer():
+    '''Find the most probably k-mer in text for the given profile.'''
+
+    print "Enter the data (text, k, profile matrix):"
+
+    text = raw_input()
+    k = int(raw_input())
+    profile = []
+    while True:
+        line = raw_input()
+        if len(line) == 0:
+            break
+        else:
+            profile.append([float(x) for x in line.split()])
+
+    result = ProfileMostProbableKmer(text, k, profile)
+    print 'The profile-most probable k-mer is:', result
+
+#    with open('ba2a_2_test_results.txt', 'r') as expected_results_fh:
+#        expected_results = expected_results_fh.readline().split()
+#    TestResults(result, expected_results)
+
+# End of Exercise_ba2c_ProfileMostProbableKmer()
+
 def FindUniqueBaseLists(start = ['A', 'C', 'G', 'T']):
 
     if len(start) <= 1:
@@ -756,4 +798,5 @@ if __name__ == "__main__":
     # Exercise_ba1n_FindNeighbors()
 
     # Exercise_ba2a_FindImplantedMotifs()
-    Exercise_ba2b_FindMedianString()
+    # Exercise_ba2b_FindMedianString()
+    Exercise_ba2c_ProfileMostProbableKmer()
