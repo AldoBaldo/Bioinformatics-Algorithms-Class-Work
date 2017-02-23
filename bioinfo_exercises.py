@@ -454,6 +454,12 @@ def ProfileMostProbableKmer(text, k, profile):
 
 # End of ProfileMostProbableKmer()
 
+def GreedyMotifSearch(k, t, dna):
+
+    
+
+# End of GreedyMotifSearch()
+
 def Exercise_ba1b_FindMostFrequentString():
 
     parser = argparse.ArgumentParser(description="Find the most frequent patterns of length k")
@@ -709,10 +715,6 @@ def Exercise_ba2b_FindMedianString():
     result = FindMedianString(args.k, args.dna)
     print 'The median string is:', result
 
-#    with open('ba2a_2_test_results.txt', 'r') as expected_results_fh:
-#        expected_results = expected_results_fh.readline().split()
-#    TestResults(result, expected_results)
-
 # End of Exercise_ba2b_FindMedianString()
 
 def Exercise_ba2c_ProfileMostProbableKmer():
@@ -733,11 +735,29 @@ def Exercise_ba2c_ProfileMostProbableKmer():
     result = ProfileMostProbableKmer(text, k, profile)
     print 'The profile-most probable k-mer is:', result
 
-#    with open('ba2a_2_test_results.txt', 'r') as expected_results_fh:
-#        expected_results = expected_results_fh.readline().split()
-#    TestResults(result, expected_results)
-
 # End of Exercise_ba2c_ProfileMostProbableKmer()
+
+def Exercise_ba2d_GreedyMotifSearch():
+    '''Find the most probably k-mer in text for the given profile.'''
+
+    print "Enter the data (text, k, profile matrix):"
+
+    k = int(raw_input())
+    t = int(raw_input())
+    dna = []
+    while True:
+        line = raw_input()
+        if len(line) == 0:
+            break
+        else:
+            dna.append([float(x) for x in line.split()])
+
+    result = GreedyMotifSearch(k, t, dna)
+    print 'The best motifs for the given dna is:'
+    for row in result:
+        print '   ' + row
+
+# End of Exercise_ba2d_GreedyMotifSearch()
 
 def FindUniqueBaseLists(start = ['A', 'C', 'G', 'T']):
 
@@ -799,4 +819,5 @@ if __name__ == "__main__":
 
     # Exercise_ba2a_FindImplantedMotifs()
     # Exercise_ba2b_FindMedianString()
-    Exercise_ba2c_ProfileMostProbableKmer()
+    # Exercise_ba2c_ProfileMostProbableKmer()
+    Exercise_ba2d_GreedyMotifSearch()
