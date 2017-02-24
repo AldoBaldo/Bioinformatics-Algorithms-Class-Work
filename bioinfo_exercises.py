@@ -458,11 +458,17 @@ def GenProfileFromMotifs(motifs):
 
     num_motifs = len(motifs)
     motif_len = len(motifs[0])
-    profile = list(itertools.repeat(list(itertools.repeat(0.0, motif_len)), 4))
+    # profile = list(itertools.repeat(list(itertools.repeat(0.0, motif_len)), 4))
+    profile = [
+        list(itertools.repeat(0.0, motif_len)),
+        list(itertools.repeat(0.0, motif_len)),
+        list(itertools.repeat(0.0, motif_len)),
+        list(itertools.repeat(0.0, motif_len))
+    ]
 
     for i in range(num_motifs):
         for j in range(motif_len):
-            profile[i, BaseToNumber(motifs[i,j])] += 1.0/num_motifs
+            profile[BaseToNumber(motifs[i][j])][j] += 1.0/num_motifs
 
     return profile
 
@@ -489,10 +495,10 @@ def GreedyMotifSearch(k, t, dna):
 
     best_motifs = [x[:k] for x in dna]
 
-    for k in range(len(dna[0]) - k + 1):
-        motifs = [dna[0][k:k+1]]
+    for j in range(len(dna[0]) - k + 1):
+        motifs = [dna[0][j:j+k]]
 
-        for i in range(1:t):
+        for i in range(1, t):
 
             profile = GenProfileFromMotifs(motifs)
             motifs.append(ProfileMostProbableKmer(dna[i], k, profile))
@@ -786,15 +792,15 @@ def Exercise_ba2d_GreedyMotifSearch():
 
     print "Enter the data (text, k, profile matrix):"
 
-    k = int(raw_input())
-    t = int(raw_input())
+    k, t = [int(x) for x in raw_input().split()]
+    # t = int(raw_input())
     dna = []
     while True:
         line = raw_input()
         if len(line) == 0:
             break
         else:
-            dna.append([float(x) for x in line.split()])
+            dna.append(line)
 
     result = GreedyMotifSearch(k, t, dna)
     print 'The best motifs for the given dna is:'
