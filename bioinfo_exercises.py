@@ -454,9 +454,53 @@ def ProfileMostProbableKmer(text, k, profile):
 
 # End of ProfileMostProbableKmer()
 
+def GenProfileFromMotifs(motifs):
+
+    num_motifs = len(motifs)
+    motif_len = len(motifs[0])
+    profile = list(itertools.repeat(list(itertools.repeat(0.0, motif_len)), 4))
+
+    for i in range(num_motifs):
+        for j in range(motif_len):
+            profile[i, BaseToNumber(motifs[i,j])] += 1.0/num_motifs
+
+    return profile
+
+# End of GenProfileFromMotifs()
+
+def CalculateScore(motifs):
+
+    num_motifs = len(motifs)
+    motif_len = len(motifs[0])
+    score = 0
+
+    for i in range(motif_len):
+        counts = [0,0,0,0]
+        for j in range(num_motifs):
+            base = motifs[j][i]
+            counts[BaseToNumber(base)] += 1
+        score += max(counts)
+
+    return score
+
+# End of CalculateScore()
+
 def GreedyMotifSearch(k, t, dna):
 
-    
+    best_motifs = [x[:k] for x in dna]
+
+    for k in range(len(dna[0]) - k + 1):
+        motifs = [dna[0][k:k+1]]
+
+        for i in range(1:t):
+
+            profile = GenProfileFromMotifs(motifs)
+            motifs.append(ProfileMostProbableKmer(dna[i], k, profile))
+
+        if CalculateScore(motifs) < CalculateScore(best_motifs):
+            best_motifs = motifs
+
+    return best_motifs
 
 # End of GreedyMotifSearch()
 
