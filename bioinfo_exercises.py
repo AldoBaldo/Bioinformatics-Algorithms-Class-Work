@@ -438,7 +438,7 @@ def FindMedianString(k, dna):
 
 def ProfileMostProbableKmer(text, k, profile):
 
-    result = ''
+    result = text[:k]   # Pick this if all k-mers have 0 probability
     best_probability = 0
 
     for i in range (len(text) - k + 1):
@@ -485,7 +485,7 @@ def CalculateScore(motifs):
         for j in range(num_motifs):
             base = motifs[j][i]
             counts[BaseToNumber(base)] += 1
-        score += max(counts)
+        score += num_motifs - max(counts)
 
     return score
 
@@ -790,7 +790,7 @@ def Exercise_ba2c_ProfileMostProbableKmer():
 def Exercise_ba2d_GreedyMotifSearch():
     '''Find the most probably k-mer in text for the given profile.'''
 
-    print "Enter the data (text, k, profile matrix):"
+    print "Enter the data (k t, dna):"
 
     k, t = [int(x) for x in raw_input().split()]
     # t = int(raw_input())
@@ -806,6 +806,19 @@ def Exercise_ba2d_GreedyMotifSearch():
     print 'The best motifs for the given dna is:'
     for row in result:
         print '   ' + row
+
+    print "Enter the results to compare against:"
+    expected_results = []
+    while True:
+        line = raw_input()
+        if len(line) == 0:
+            break
+        else:
+            expected_results.append(line)
+    if len(expected_results) > 0:
+        TestResults(result, expected_results)
+    else:
+        print "Skipping results validation."
 
 # End of Exercise_ba2d_GreedyMotifSearch()
 
