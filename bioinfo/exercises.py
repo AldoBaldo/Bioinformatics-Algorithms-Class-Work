@@ -5,7 +5,63 @@ import argparse
 import time
 
 import utils
-import test
+
+def TestResults(my_results, expected_results):
+
+    error_count = 0
+
+    if len(my_results) != len(expected_results):
+        print "Results differ in length.", len(my_results), 'vs', len(expected_results)
+        return
+
+    for item in my_results:
+        if item not in expected_results:
+            error_count += 1
+            print "Item", item, "from my results is not found in expected results"
+
+    for item in expected_results:
+        if item not in my_results:
+            error_count += 1
+            print "Item", item, "from expected results is not found in my results"
+
+    print error_count, "errors found"
+
+# End of Test Results()
+
+
+def FindUniqueBaseLists(start = ['A', 'C', 'G', 'T']):
+
+    if len(start) <= 1:
+        return [start]
+
+    result = []
+
+    for base in start:
+        new_pool = start[:]
+        new_pool.remove(base)
+        result += [[base] + x for x in FindUniqueBaseLists(new_pool)]
+
+    return result
+
+# End of FindUniqueBaseLists()
+
+def TestCombo():
+
+    combos = FindUniqueBaseLists()
+    expected_results = ["CCG", "TCG", "GCG", "AAG", "ATG", "AGG", "ACA", "ACC", "ACT", "ACG"]
+    winners = []
+
+    for combo in combos:
+        result = utils.FindNeighbors("ACG", 1, next_base_list = combo)
+        print "For combo:", combo
+        print "                Expected results are:", expected_results
+        print "                My results are      :", result
+        if result == expected_results:
+            winners.append(combo)
+
+    print "The winning combos are:", winners
+
+# End of TestCombo()
 
 def Exercise_ba1b_FindMostFrequentString():
 
@@ -161,7 +217,7 @@ def Exercise_ba1k_CountingFrequencies():
 #        for line in expected_results_fh.readlines():
 #            expected_results += [int(x) for x in line.split()]
 #
-#    test.TestResults(result, expected_results)
+#    TestResults(result, expected_results)
 
 # End of Exercise_ba1k_CountingFrequencies()
 
@@ -226,7 +282,7 @@ def Exercise_ba1n_FindNeighbors():
     #with open('ba1n_test_output.txt', 'r') as expected_results_fh:
     #    expected_results = [x.strip() for x in expected_results_fh.readlines() if len(x.strip()) > 0]
 
-    #test.TestResults(result, expected_results)
+    #TestResults(result, expected_results)
 
 # End of Exercise_ba1n_FindNeighbors()
 
@@ -245,7 +301,7 @@ def Exercise_ba2a_FindImplantedMotifs():
 
 #    with open('ba2a_2_test_results.txt', 'r') as expected_results_fh:
 #        expected_results = expected_results_fh.readline().split()
-#    test.TestResults(result, expected_results)
+#    TestResults(result, expected_results)
 
 # End of Exercise_ba2a_FindImplantedMotifs()
 
@@ -314,7 +370,7 @@ def Exercise_ba2e_GreedyMotifSearch():
         else:
             expected_results.append(line)
     if len(expected_results) > 0:
-        test.TestResults(result, expected_results)
+        TestResults(result, expected_results)
     else:
         print "Skipping results validation."
 
@@ -360,7 +416,7 @@ def Exercise_ba2f_RandomizedMotifSearch():
         else:
             expected_results.append(line)
     if len(expected_results) > 0:
-        test.TestResults(best_result, expected_results)
+        TestResults(best_result, expected_results)
     else:
         print "Skipping results validation."
 
@@ -397,7 +453,7 @@ def Exercise_ba2g_GibbsSampler():
         else:
             expected_results.append(line)
     if len(expected_results) > 0:
-        test.TestResults(result, expected_results)
+        TestResults(result, expected_results)
     else:
         print "Skipping results validation."
 

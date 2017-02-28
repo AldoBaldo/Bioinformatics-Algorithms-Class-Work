@@ -1,65 +1,86 @@
 #!/usr/bin/env python
 
+import logging
+
+LOG = logging.getLogger(__name__)
+# LOG.setLevel(logging.INFO)
+
+# Set logging defaults
+logging.basicConfig(format=('%(levelname)s '
+                            '%(filename)s '
+                            '%(funcName)s() '
+                            '%(message)s'), level=logging.DEBUG)
+
 import sys
 import time
+import unittest
 
 import utils
 
-def TestResults(my_results, expected_results):
+class TestApp(unittest.TestCase):
 
-    error_count = 0
+    def __init__(self, testCaseNames):
+        ''' Each test case specified below gets it instance of a unit
+            test object with independent self definitions.
+        '''
+        super(TestApp, self).__init__(testCaseNames)
 
-    if len(my_results) != len(expected_results):
-        print "Results differ in length.", len(my_results), 'vs', len(expected_results)
-        return
+    # End of TestApp.__init__()
 
-    for item in my_results:
-        if item not in expected_results:
-            error_count += 1
-            print "Item", item, "from my results is not found in expected results"
-
-    for item in expected_results:
-        if item not in my_results:
-            error_count += 1
-            print "Item", item, "from expected results is not found in my results"
-
-    print error_count, "errors found"
-
-# End of Test Results()
+    def setUp(self):
+        ''' TC setup'''
+        LOG.debug('=======================================================')
+        LOG.debug('Start of new Test Case:')
 
 
-def FindUniqueBaseLists(start = ['A', 'C', 'G', 'T']):
+    # End of TestApp.setUp()
 
-    if len(start) <= 1:
-        return [start]
+    def tearDown(self):
+        '''TC tear down'''
+        LOG.debug('Completion of this Test Case')
+        LOG.debug('=======================================================')
 
-    result = []
+    # End of TestApp.tearDown()
 
-    for base in start:
-        new_pool = start[:]
-        new_pool.remove(base)
-        result += [[base] + x for x in FindUniqueBaseLists(new_pool)]
+    def test_RandomWeighted(self):
 
-    return result
+        probabilities = [0.2, 0.4, 0.2]
+        result_counts = [0, 0, 0]
+        loop_count = 5000
+        expected_result_counts = [loop_count/4, loop_count/2, loop_count/4]
+        for i in range(loop_count):
+            result_counts[utils.RandomWeighted(probabilities)] += 1
 
-# End of FindUniqueBaseLists()
+        LOG.info("Result counts:")
+        for i in range(len(result_counts)):
+            print "   Result for", i, "is", result_counts[i]
 
-def TestCombo():
+        for i in range(len(result_counts)):
+            # Ensure results are within 10% of expected
+            self.assertLess(abs(expected_result_counts[i] - result_counts[i]),
+                            loop_count/10,
+                            msg="Results out of range for instance " + str(i) +
+                            " Actual result: " + str(result_counts[i]) +
+                            " Expected result: " + str(expected_result_counts[i]))
 
-    combos = FindUniqueBaseLists()
-    expected_results = ["CCG", "TCG", "GCG", "AAG", "ATG", "AGG", "ACA", "ACC", "ACT", "ACG"]
-    winners = []
+    # End of test_RandomWeighted()
 
-    for combo in combos:
-        result = utils.FindNeighbors("ACG", 1, next_base_list = combo)
-        print "For combo:", combo
-        print "                Expected results are:", expected_results
-        print "                My results are      :", result
-        if result == expected_results:
-            winners.append(combo)
-
-    print "The winning combos are:", winners
-
-# End of TestCombo()
+# End of class TestApp
 
 
+if __name__ == "__main__":
+
+    LOG.debug("Unittest args: " + ' '.join(sys.argv))
+    LOG.debug("Begining of the test suite:")
+    LOG.debug("===============================================")
+    SUITE = unittest.TestLoader().loadTestsFromTestCase(TestApp)
+    RET = unittest.TextTestRunner(verbosity=2).run(SUITE)
+    # Print out the test results
+    print str(RET)
+    if RET.printErrors() != None:
+        print "Error: " + RET.printErrors()
+
+    if RET.wasSuccessful():
+        exit(0)
+    else:
+        exit(1)
