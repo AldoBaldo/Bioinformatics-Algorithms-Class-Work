@@ -61,6 +61,16 @@ def NumberToPattern(number, k):
 
 # End of NumberToPattern()
 
+def KmersFromText(text, k):
+
+    result = []
+    for i in range(len(text) - k + 1):
+        result.append(text[i:i+k])
+
+    return result
+
+# End of KmersFromText()
+
 def RandomWeighted(probabilities):
 
     cdf = list(itertools.repeat(0,len(probabilities)))
@@ -443,6 +453,13 @@ def FindMedianString(k, dna):
 
 # End of FindMedianString()
 
+def GenProfileProbabilitiesKmer(kmer, profile):
+
+    return reduce(lambda x, y: x*y,
+                  [profile[BaseToNumber(base)][i] for i, base in enumerate(kmer)])
+
+# End of GenProfileProbabilitiesKmer()
+
 def ProfileMostProbableKmer(text, k, profile):
 
     result = text[:k]   # Pick this if all k-mers have 0 probability
@@ -450,8 +467,7 @@ def ProfileMostProbableKmer(text, k, profile):
 
     for i in range (len(text) - k + 1):
         kmer = text[i:i+k]
-        cur_probability = reduce(lambda x, y: x*y,
-                                 [profile[BaseToNumber(base)][i] for i, base in enumerate(kmer)])
+        cur_probability = GenProfileProbabilitiesKmer(kmer, profile)
 
         if cur_probability > best_probability:
             best_probability = cur_probability
@@ -468,8 +484,7 @@ def ProfileRandomlyGeneratedKmer(text, k, profile):
 
     for i in range (len(text) - k + 1):
         kmer = text[i:i+k]
-        cur_probability = reduce(lambda x, y: x*y,
-                                 [profile[BaseToNumber(base)][i] for i, base in enumerate(kmer)])
+        cur_probability = GenProfileProbabilitiesKmer(kmer, profile)
         probabilities.append(cur_probability)
 
     result_i = RandomWeighted(probabilities)
