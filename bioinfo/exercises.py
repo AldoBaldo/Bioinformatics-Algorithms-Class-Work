@@ -63,6 +63,37 @@ def TestCombo():
 
 # End of TestCombo()
 
+def Exercise_ba1a_PatternCount():
+
+    '''Count how often the given pattern appears in the given text.'''
+
+    print "Enter the data (text, pattern):"
+
+    text = raw_input()
+    pattern = raw_input()
+
+    print "Python version:", sys.version
+    print "Pattern Length:", len(pattern)
+    print "Text Length:", len(text)
+
+    result = utils.PatternCount(text, pattern)
+
+    print 'The pattern is repeated the following number of times:'
+    print '   ', result
+
+    print "Enter the results to compare against:"
+    expected_result = raw_input()
+    if len(expected_result) > 0:
+        expected_result = int(expected_result)
+        if expected_result != result:
+            print "Results don't match.  Expected", expected_result, "but found", result
+        else:
+            print "Results match"
+    else:
+        print "Skipping results validation."
+
+# End of Exercise_ba1a_PatternCount()
+
 def Exercise_ba1b_FindMostFrequentString():
 
     parser = argparse.ArgumentParser(description="Find the most frequent patterns of length k")
@@ -359,7 +390,7 @@ def Exercise_ba2e_GreedyMotifSearch():
     result = utils.GreedyMotifSearch(k, t, dna)
     print 'The best motifs for the given dna is:'
     for row in result:
-        print '   ' + row
+        print ('   ' + row)
 
     print "Enter the results to compare against:"
     expected_results = []
@@ -444,7 +475,7 @@ def Exercise_ba2g_GibbsSampler():
     for row in result:
         print '   ' + row
 
-    print "Enter the results to compare against:"
+    print ("Enter the results to compare against:")
     expected_results = []
     while True:
         line = raw_input()
@@ -469,6 +500,7 @@ if __name__ == "__main__":
     #NumberToPattern(11,2)
     #NumberToPattern(PatternToNumber('GT'), 2)
 
+    Exercise_ba1a_PatternCount()
     # Exercise_ba1b_FindMostFrequentString()
     # Exercise_ba1c_ReverseCompliment()
     # Exercise_ba1d_FindPatternInGenome()
@@ -488,4 +520,4 @@ if __name__ == "__main__":
     # Exercise_ba2c_ProfileMostProbableKmer()
     # Exercise_ba2e_GreedyMotifSearch()
     # Exercise_ba2f_RandomizedMotifSearch()
-    Exercise_ba2g_GibbsSampler()
+    # Exercise_ba2g_GibbsSampler()

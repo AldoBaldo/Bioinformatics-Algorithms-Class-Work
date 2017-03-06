@@ -15,6 +15,7 @@ def PatternCount(sequence, pattern, max_hamming_distance=0):
 
     for i in range(0, srch_count):
         if FindHammingDistance(pattern, sequence[i:i+len_pattern]) <= max_hamming_distance:
+            print "found match at i =", i
             count += 1
 
     return count
