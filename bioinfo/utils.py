@@ -4,7 +4,11 @@ import sys
 import array
 import itertools
 import random
+import time
+from collections import OrderedDict
+from functools import reduce
 
+DEBUG = False
 
 def PatternCount(sequence, pattern, max_hamming_distance=0):
 
@@ -15,12 +19,26 @@ def PatternCount(sequence, pattern, max_hamming_distance=0):
 
     for i in range(0, srch_count):
         if FindHammingDistance(pattern, sequence[i:i+len_pattern]) <= max_hamming_distance:
-            print "found match at i =", i
             count += 1
 
     return count
 
 # End of PatternCount()
+
+def FindPatternLocations(sequence, pattern, max_hamming_distance=0):
+
+    locations = []
+    len_sequence = len(sequence)
+    len_pattern = len(pattern)
+    srch_count = len_sequence - len_pattern + 1
+
+    for i in range(0, srch_count):
+        if FindHammingDistance(pattern, sequence[i:i+len_pattern]) <= max_hamming_distance:
+            locations.append(i)
+
+    return locations
+
+# End of FindPatternLocations()
 
 # This array converts the lowest three bits of a base letter (A,C,G,T) to number that can be used
 # to index into an array.
@@ -74,7 +92,7 @@ def KmersFromText(text, k):
 
 def RandomWeighted(probabilities):
 
-    cdf = list(itertools.repeat(0,len(probabilities)))
+    cdf = [0] * len(probabilities)
     running_sum = 0
     for i, prob in enumerate(probabilities):
         running_sum += prob
@@ -87,7 +105,7 @@ def RandomWeighted(probabilities):
     lower_bound = 0
     while True:
 
-        i = (upper_bound + lower_bound) / 2
+        i = (upper_bound + lower_bound) // 2
 
         if rand < cdf[i]:
             upper_bound = i
@@ -108,7 +126,7 @@ def FindMostFrequentUsingDict(sequence, k, t=0):
     Otherwise, find the pattern that occurs the most.
     '''
 
-    pattern_counts = {}
+    pattern_counts = OrderedDict()
     len_sequence = len(sequence)
     srch_count = len_sequence - k + 1
 
@@ -121,7 +139,7 @@ def FindMostFrequentUsingDict(sequence, k, t=0):
 
     max_count = t
     result = []
-    for pattern, count in pattern_counts.iteritems():
+    for pattern, count in pattern_counts.items():
         if count > max_count:
             if t == 0:
                 max_count = count
@@ -165,6 +183,23 @@ def FindMostFrequentUsingArray(sequence, k, t=0):
 
 # End of FindMostFrequentUsingArray()
 
+def ComputeFrequencies(text, k):
+
+    """Return a dictionary of k-mers to k-mer counts for the given text."""
+
+    frequencies = {}
+
+    for i in range(len(text) - k + 1):
+        kmer = text[i:i+k]
+        if kmer in frequencies:
+            frequencies[kmer] += 1
+        else:
+            frequencies[kmer] = 1
+
+    return frequencies
+
+# End of ComputeFrequencies()
+
 def ReverseCompliment(pattern):
 
     result = ''
@@ -194,11 +229,11 @@ def FindPattern(pattern, genome):
 def FindPatternClump(k, L, t, genome):
 
     window_start = 0
-    window_end = L-1
-    search_end = len(genome) - k
+    window_end = L
+    search_end = len(genome)
     patterns_found = []
 
-    while window_end < search_end:
+    while window_end <= search_end:
         new_patterns = FindMostFrequentUsingDict(genome[window_start:window_end], k, t)
         for pattern in new_patterns:
             if pattern not in patterns_found:
@@ -211,13 +246,56 @@ def FindPatternClump(k, L, t, genome):
 
 # End of FindPatternClump()
 
+def BetterClumpFinding(k, L, t, genome):
+
+    clumped_patterns = []
+    pattern_counts = ComputeFrequencies(genome[0:L], k)
+    for pattern, count in pattern_counts.items():
+        if count >= t:
+            # At this point we can assume that pattern is not already
+            # in clumped_patterns
+            clumped_patterns.append(pattern)
+
+    for i in range(1,len(genome)-L+1):
+        first = genome[i-1:i-1+k]
+        last  = genome[i+L-k:i+L]
+        pattern_counts[first] -= 1    # first is guaranteed to already
+                                         # be in pattern_counts
+        if last in pattern_counts:
+            pattern_counts[last] += 1
+        else:
+            pattern_counts[last] = 1
+        if pattern_counts[last] >= t and last not in clumped_patterns:
+            clumped_patterns.append(last)
+
+    return sorted(clumped_patterns)
+
+# End of BetterClumpFinding()
+
+def Skew(genome):
+
+    cur_skew = 0
+    skew_diagram = [0]
+
+    for i, base in enumerate(genome):
+        if base == 'G':
+            cur_skew += 1
+        elif base == 'C':
+            cur_skew -= 1
+
+        skew_diagram.append(cur_skew)
+
+    return skew_diagram
+
+# End of Skew()
+
 def FindMinimumSkews(genome):
 
     cur_skew = 0
     min_skew = 0
     min_skew_locci = []
 
-    debug_skews = []
+    # debug_skews = []
 
     for i, bp in enumerate(genome):
         if bp == 'C':
@@ -231,11 +309,7 @@ def FindMinimumSkews(genome):
             min_skew_locci = [i+1]
             min_skew = cur_skew
 
-        debug_skews.append(cur_skew)
-
-    # print '  ' + ',   '.join(genome)
-    # print ', '.join(['% 3d' % x for x in debug_skews])
-    # print ', '.join(['% 3d' % x for x in range(1, len(genome)+1)])
+        # debug_skews.append(cur_skew)
 
     return min_skew_locci
 
@@ -253,7 +327,7 @@ def FindHammingDistance(pattern_a, pattern_b):
 
 # End of FindHammingDistance()
 
-def FindSumOfHammingDistances(pattern, dna):
+def DistanceBetweenPatternAndStrings(pattern, dna):
 
     hamming_sum = 0
     k = len(pattern)
@@ -268,11 +342,10 @@ def FindSumOfHammingDistances(pattern, dna):
             if min_hamming == 0:
                 break
         hamming_sum += min_hamming
-        print "  For pattern <" + pattern + "> in strand <" + strand + ">, the min hamming distance is:", min_hamming
 
     return hamming_sum
 
-# End of FindSumOfHammingDistances()
+# End of DistanceBetweenPatternAndStrings()
 
 def FindApproximatePatternMatches(pattern, max_hamming_distance, text):
 
@@ -293,27 +366,27 @@ def FindMostFrequentWithMismatches(k, d, text):
 
     '''Look for all possible patterns in the given text'''
 
-    pattern_counts = []
+    patterns_found = []
     max_count_found = 0
 
     for i in range(4**k):
         pattern = NumberToPattern(i, k)
         pattern_count = PatternCount(text, pattern, d)
         if pattern_count == max_count_found:
-            pattern_counts.append(pattern)
+            patterns_found.append(pattern)
         elif pattern_count > max_count_found:
-            pattern_counts = [pattern]
+            patterns_found = [pattern]
             max_count_found = pattern_count
 
-    return pattern_counts
+    return patterns_found
 
 # End of FindMostFrequentWithMismatches()
 
-def FindMostFrequentWithMismatchesAndReverseCompiliment(k, d, text):
+def FindMostFrequentWithMismatchesAndReverseComplement(k, d, text):
 
     '''Look for all possible patterns in the given text'''
 
-    pattern_counts = []
+    patterns_found = []
     max_count_found = 0
 
     for i in range(4**k):
@@ -322,14 +395,44 @@ def FindMostFrequentWithMismatchesAndReverseCompiliment(k, d, text):
         pattern_count = PatternCount(text, pattern, d)
         pattern_count += PatternCount(text, reverse_compliment, d)
         if pattern_count == max_count_found:
-            pattern_counts.append(pattern)
+            patterns_found.append(pattern)
         elif pattern_count > max_count_found:
-            pattern_counts = [pattern]
+            patterns_found = [pattern]
             max_count_found = pattern_count
 
-    return pattern_counts
+    return patterns_found
 
-# End of FindMostFrequentWithMismatchesAndReverseCompiliment()
+# End of FindMostFrequentWithMismatchesAndReverseComplement()
+
+def FindMostFrequentWithMismatchesAndReverseComplementWithLocci(k, d, text):
+
+    '''Look for all possible patterns in the given text'''
+
+    patterns_found = {}
+    max_count_found = 2   # Handle case where no patterns are found
+
+    progress_divisor = 16
+    progress_interval = int((4**k)/progress_divisor)
+    progress_marker = 0
+
+    for i in range(4**k):
+        if (i%progress_interval) == 0:
+            progress_marker += 1
+        pattern = NumberToPattern(i, k)
+        reverse_complement = ReverseCompliment(pattern)
+        pattern_locations = FindPatternLocations(text, pattern, d)
+        pattern_locations += FindPatternLocations(text, reverse_complement, d)
+        pattern_count = len(pattern_locations)
+        if pattern_count == max_count_found:
+            patterns_found[pattern] = pattern_locations
+        elif pattern_count > max_count_found:
+            patterns_found = {pattern : pattern_locations}
+            max_count_found = pattern_count
+
+    return patterns_found
+
+# End of FindMostFrequentWithMismatchesAndReverseComplementWithInfo()
+
 
 
 FindOtherBasesArray = [
@@ -395,7 +498,7 @@ def FindPatternFrequencies(k, text):
 
 # End of FindPatternFrequencies()
 
-def FindImplantedMotifs(k, d, dna):
+def MotifEnumeration(k, d, dna):
 
     pattern_lists = []
 
@@ -404,7 +507,10 @@ def FindImplantedMotifs(k, d, dna):
         pattern_list = []
         for i in range(len(strand)-k+1):
             pattern = strand[i:i+k]
-            pattern_list += FindNeighbors(pattern, d)
+            neighbors = FindNeighbors(pattern, d)
+            for neighbor in neighbors:
+                if neighbor not in pattern_list:
+                    pattern_list.append(neighbor)
         pattern_lists.append(pattern_list)
 
     # Find patterns that are in all lists
@@ -416,27 +522,45 @@ def FindImplantedMotifs(k, d, dna):
         for other_list in remaining_lists:
             if pattern not in other_list:
                 pattern_in_all_lists = False
-        if pattern_in_all_lists and pattern not in unique_patterns:
+        if pattern_in_all_lists:
             unique_patterns.append(pattern)
 
-    return sorted(unique_patterns)
+    return unique_patterns
 
-# End of FindImplantedMotifs()
+# End of MotifEnumeration()
+
+def MotifEnumeration2(k, d, dna):
+
+    patterns = set()
+
+    for strand in dna:
+        for kmer in KmersFromText(strand, k):
+            for neighbor in FindNeighbors(kmer, d):
+                pattern_found_in_all_strands = True
+                for strand2 in dna:
+                    if PatternCount(strand2, neighbor, d) == 0:
+                        pattern_found_in_all_strands = False
+                        break
+                if pattern_found_in_all_strands:
+                    patterns.add(neighbor)
+
+    return list(patterns)
+
+# End of MotifEnumeration2()
 
 def FindMedianString(k, dna):
 
     t = len(dna)
     distance = k * t
     median = ''
-    saved_median_distances = {}
+    saved_median_distances = OrderedDict()
     saved_medians_of_min_distance = []
 
     # Find distance for each possible k-mer
     for i in range(4**k):
         pattern = NumberToPattern(i, k)
-        print "Finding hamming sum for <" + pattern + ">"
-        new_distance = FindSumOfHammingDistances(pattern, dna)
-        print "New hamming sum is:", new_distance
+        new_distance = DistanceBetweenPatternAndStrings(pattern, dna)
+        #print ("New hamming sum is:", new_distance)
         saved_median_distances[pattern] = new_distance
         if new_distance < distance:
             distance = new_distance
@@ -445,11 +569,7 @@ def FindMedianString(k, dna):
         elif new_distance == distance:
             saved_medians_of_min_distance.append(pattern)
 
-    for pattern in sorted(saved_median_distances):
-        print "The hamming sum for >" + pattern + "> is:", saved_median_distances[pattern]
-
-    print "The following patterns share a min hamming distance of:", distance, ":", ' '.join(saved_medians_of_min_distance)
-
+    import pdb; pdb.set_trace()
     return median
 
 # End of FindMedianString()
@@ -457,7 +577,7 @@ def FindMedianString(k, dna):
 def GenProfileProbabilitiesKmer(kmer, profile):
 
     return reduce(lambda x, y: x*y,
-                  [profile[BaseToNumber(base)][i] for i, base in enumerate(kmer)])
+               [profile[BaseToNumber(base)][i] for i, base in enumerate(kmer)])
 
 # End of GenProfileProbabilitiesKmer()
 
@@ -495,18 +615,37 @@ def ProfileRandomlyGeneratedKmer(text, k, profile):
 
 # End of ProfileRandomlyGeneratedKmer()
 
+def GenProfileFromMotifsBasic(motifs):
+
+    num_motifs = len(motifs)
+    motif_len = len(motifs[0])
+    # profile = list(itertools.repeat(list(itertools.repeat(0.0, motif_len)), 4))
+    profile = [
+        list(itertools.repeat(0, motif_len)),
+        list(itertools.repeat(0, motif_len)),
+        list(itertools.repeat(0, motif_len)),
+        list(itertools.repeat(0, motif_len))
+    ]
+
+    for i in range(num_motifs):
+        for j in range(motif_len):
+            profile[BaseToNumber(motifs[i][j])][j] += 1.0/num_motifs
+
+    return profile
+
+# End of GenProfileFromMotifsBasic()
+
 def GenProfileFromMotifs(motifs):
 
     num_motifs = len(motifs)
     divisor = num_motifs + 4    # Add one for each base
     init_val = 1.0/divisor
     motif_len = len(motifs[0])
-    # profile = list(itertools.repeat(list(itertools.repeat(0.0, motif_len)), 4))
     profile = [
-        list(itertools.repeat(init_val, motif_len)),
-        list(itertools.repeat(init_val, motif_len)),
-        list(itertools.repeat(init_val, motif_len)),
-        list(itertools.repeat(init_val, motif_len))
+        [init_val] * motif_len,
+        [init_val] * motif_len,
+        [init_val] * motif_len,
+        [init_val] * motif_len
     ]
 
     for i in range(num_motifs):
@@ -587,7 +726,24 @@ def RandomizedMotifSearch(k, t, dna):
 
 # End of RandomizedMotifSearch()
 
-def GibbsSampler(dna, k, t, N):
+def RandomizedMotifSearchBestOfMany(k, t, dna, iter_count):
+
+    best_score = k*t
+    best_result = None
+    for i in range(iter_count):
+        result = RandomizedMotifSearch(k, t, dna)
+        cur_score = CalculateScore(result)
+        if cur_score < best_score:
+            if DEBUG:
+                print(cur_score, "<--", ' '.join(result))
+            best_score = cur_score
+            best_result = result
+
+    return best_result
+
+# End of RandomizedMotifSearchBestOfMany()
+
+def GibbsSampler(k, t, N, dna):
 
     # Generate initial random motifs
     len_string = len(dna[0])
@@ -607,17 +763,76 @@ def GibbsSampler(dna, k, t, N):
         new_motif = ProfileRandomlyGeneratedKmer(dna[i], k, profile)
         motifs = motifs[:i] + [new_motif] + motifs[i+1:]
 
-        if CalculateScore(motifs) < CalculateScore(best_motifs):
+        cur_score = CalculateScore(motifs)
+        if cur_score < best_score:
+            if DEBUG:
+                print(cur_score, "<--", ' '.join(motifs))
             best_motifs = motifs
-            best_score = CalculateScore(motifs)
-
-        # Debug
-        print "Round", str(j) + ", replacing motif", i, "with", new_motif, "to give",
-        print "score:", CalculateScore(motifs), "Data:", motifs
-
-    print "Best Score:", best_score
+            best_score = cur_score
 
     return best_motifs
 
 # End of GibbsSampler()
+
+def Composition(k, text):
+
+    result = []
+
+    for i in range(len(text) - k + 1):
+        result.append(text[i:i+k])
+
+    return sorted(result)
+
+# End of Composition()
+
+def GetInput(*args):
+
+    result = []
+
+    for arg in args:
+        if arg in ['k', 't', 'd', 'i']:
+            result.append(int(input().strip()))
+        elif arg in ['k t', 'k d', 'i i']:
+            result += [int(x.strip()) for x in input().split()]
+        elif arg in ['pattern', 's']:
+            result.append(input().strip())
+        elif arg == 'dna':
+            result.append([x.strip() for x in sys.stdin.readlines()])
+        elif arg == 'dna_single_line':
+            result.append([x.strip() for x in input().split()])
+
+    if len(args) == 1:
+        return result[0]
+    else:
+        return result
+
+# End of GetInput()
+
+def CompareResults(expected, found):
+
+    if expected == found:
+        print("Results match")
+    else:
+        print("Results don't match")
+
+# End of CompareResult()
+
+if __name__ == "__main__":
+
+    if len(sys.argv) > 1 and sys.argv[1] == '--debug':
+        DEBUG = True
+
+    k, text = GetInput('i', 's')
+    start_time = time.time()
+    result = Composition(k, text)
+    end_time = time.time()
+    if DEBUG:
+        print("Elapsed time is", end_time - start_time)
+    print('\n'.join(result))
+
+    #print("Enter expected results")
+    #expected = GetInput('dna')
+    #CompareResults(expected, result)
+
+
 
