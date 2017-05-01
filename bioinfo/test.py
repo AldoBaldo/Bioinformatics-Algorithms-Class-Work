@@ -25,6 +25,8 @@ class TestApp(unittest.TestCase):
         '''
         super(TestApp, self).__init__(testCaseNames)
 
+        utils.DEBUG = True
+
     # End of TestApp.__init__()
 
     def setUp(self):
@@ -362,6 +364,200 @@ class TestApp(unittest.TestCase):
         result = utils.FindPatternClump(2, 5, 2, "ATAAT")
         self.assertEqual(result, ['AT'])
     # End of test_FindPatternClump_window_size()
+
+    def test_DeBruijnGraphs(self):
+
+        print("\n<===== Testing DeBruijn Eulerian Cycle =====>\n")
+        graph = utils.DeBruijnk(["0 -> 3", "1 -> 0", "2 -> 1,6", "3 -> 2", "4 -> 2",
+                                 "5 -> 4", "6 -> 5,8", "7 -> 9", "8 -> 7", "9 -> 6"])
+        result = graph.EulerianCycle()
+        string_result = '->'.join([str(x) for x in result])
+        self.assertEqual(string_result, "6->5->4->2->1->0->3->2->6->8->7->9->6")
+
+        print("\n<===== Testing DeBruijn Eulerian Path =====>\n")
+        graph = utils.DeBruijnk(["0 -> 2", "1 -> 3", "2 -> 1", "3 -> 0,4",
+                                 "6 -> 3,7", "7 -> 8", "8 -> 9", "9 -> 6"])
+        result = graph.EulerianPath()
+        string_result = '->'.join([str(x) for x in result])
+        self.assertEqual(string_result, "6->7->8->9->6->3->0->2->1->3->4")
+
+        print("\n<===== Testing DeBruijn Reconstruct Path String =====>\n")
+        graph = utils.DeBruijnk(["CTTA", "ACCA", "TACC", "GGCT", "GCTT", "TTAC"])
+        result = graph.ReconstructPathString()
+        self.assertEqual(result, "GGCTTACCA")
+
+        print("\n<===== Testing k-Universal string =====>\n")
+        result = utils.KUniversalCircularString(4)
+        self.assertEqual(result, '1110110010100001')
+
+        print("\n<===== Testing MaximalNonBranchingPaths =====>\n")
+        adjacency_list = ['1 -> 2', '2 -> 3', '3 -> 4,5', '6 -> 7', '7 -> 6']
+        graph = utils.DeBruijnk(adjacency_list)
+        result = graph.FindMaximalNonBranchingPaths()
+        # result is a list of a list of edges, but we need to print out a list of nodes.
+        node_paths = []
+        for edge_path in result:
+            node_path = [x.prev_node for x in edge_path]
+            node_path.append(edge_path[-1].next_node)
+            node_paths.append(node_path)
+        str_result = [' -> '.join([x.label for x in node_path]) for node_path in node_paths]
+        print("Result is:")
+        for s_res in str_result:
+            print("  ", s_res)
+        self.assertTrue('1 -> 2 -> 3' in str_result, msg="'1 -> 2 -> 3' not in result")
+        self.assertTrue('3 -> 4' in str_result, msg="'3 -> 4' not in result")
+        self.assertTrue('3 -> 5' in str_result, msg="'3 -> 5' not in result")
+        self.assertTrue('6 -> 7 -> 6' in str_result, msg="'6 -> 7 -> 6' not in result")
+
+        print("\n<===== Testing Generating Contigs =====>\n")
+        kmers = ['ATG', 'ATG', 'TGT', 'TGG', 'CAT', 'GGA', 'GAT', 'AGA']
+        expected = ['AGA', 'ATG', 'ATG', 'CAT', 'GAT', 'TGGA', 'TGT']
+        graph = utils.DeBruijnk(kmers)
+        result = graph.GenContigs()
+        print("Result is:", result)
+        self.assertEqual(len(result), len(expected), msg="Unexpected length of results")
+        for contig in result:
+            self.assertTrue(contig in expected)
+
+        print("\n<===== Testing StringSpelledByGappedPatters =====>\n")
+        k = 4
+        d = 2
+        kdmers = ['GACC|GCGC', 'ACCG|CGCC', 'CCGA|GCCG', 'CGAG|CCGG', 'GAGC|CGGA']
+        graph = utils.PairedDeBruijn(k,d,kdmers)
+        result = graph.GetStringSpelledByGappedPatterns()
+        print("Result is:", result)
+        self.assertTrue(result == 'GACCGAGCGCCGGA', msg="Error, expected 'GACCGAGCGCCGGA'")
+
+        print("\n<===== Testing AllGraphs Container =====>\n")
+        # Input from coursera sample data
+#        start_graph = utils.PairedDeBruijn(4, 2, [
+#            "GAGA|TTGA", "TCGT|GATG", "CGTG|ATGT", "TGGT|TGAG", "GTGA|TGTT",
+#            "GTGG|GTGA", "TGAG|GTTG", "GGTC|GAGA", "GTCG|AGAT"])
+        # Input from book
+        start_graph = utils.PairedDeBruijn(3, 1, [
+            "TAA|GCC", "AAT|CCA", "CCA|GGG", "ATG|GAT", "GCC|TGG", "GGG|TGT",
+            "ATG|CAT", "GGA|GTT", "CAT|GGA", "TGC|ATG", "TGG|ATG"])
+        graph_container = utils.AllGraphs(start_graph)
+        graph_container.SplitIntoSimpleDirectedGraphs()
+        self.assertEqual(len(graph_container.all_graphs), 4)
+        for graph in graph_container.all_graphs:
+            path_string = graph.GetStringSpelledByGappedPatterns()
+            print("Path string: ", path_string)
+
+        print("\n<===== Testing Paired DeBruijn Reconstruct Path String =====>\n")
+        graph = utils.PairedDeBruijn(4, 2, [
+            "GAGA|TTGA", "TCGT|GATG", "CGTG|ATGT", "TGGT|TGAG", "GTGA|TGTT",
+            "GTGG|GTGA", "TGAG|GTTG", "GGTC|GAGA", "GTCG|AGAT"])
+        result = graph.ReconstructPathString()
+        self.assertEqual(result, "GTGGTCGTGAGATGTTGA")
+
+    # End of test_DeBruijnGraphs()
+
+    def test_TranslateRNAToProtein(self):
+
+        print("\n<===== Testing Translating RNA to Protein =====>\n")
+        rna = 'AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA'
+        protein = utils.TranslateRNAToProtein(rna)
+        self.assertEqual(protein, 'MAMAPRTEINSTRING')
+
+    # End of TestApp.test_TranslateRNAToProtein()
+
+    def test_FindGeneForPeptide(self):
+
+        print("\n<===== Testing Finding Gene for Peptide, using coursera sample data =====>\n")
+        text = 'ATGGCCATGGCCCCCAGAACTGAGATCAATAGTACCCGTATTAACGGGTGA'
+        peptide = 'MA'
+
+        results = utils.FindGeneForPeptide(text, peptide)
+
+        expected_results = ['ATGGCC', 'GGCCAT', 'ATGGCC']
+
+        self.assertEqual(len(results), len(expected_results))
+        for res in results:
+            self.assertTrue(res in expected_results)
+        for res in expected_results:
+            self.assertTrue(res in results)
+
+        print("\n<===== Testing Finding Tyrocidin B1 gene in Bacillus brevis genome =====>\n")
+        with open('Bacillus_brevis.txt', 'r') as f:
+            temp = [x.strip() for x in f.readlines()]
+            Bacillus_brevis_dna = ''.join(temp)
+        Tyrocidine_B1 = 'VKLFPWFNQY'
+
+        results = utils.FindGeneForPeptide(Bacillus_brevis_dna, Tyrocidine_B1)
+
+        self.assertEqual(len(results), 0)
+
+        print(results)
+
+    # End of TestApp.test_FindGeneForPeptide()
+
+    def test_GenTheoreticalSpectrum(self):
+
+        print("\n<===== Testing GenTheoreticalSpectrum with cyclic coursera test input =====>\n")
+        peptide = 'LEQN'
+        result = utils.GenTheoreticalSpectrum(peptide, cyclic=True)
+        expected_result = [0, 113, 114, 128, 129, 227, 242, 242, 257, 355, 356, 370, 371, 484]
+        self.assertEqual(result, expected_result)
+
+        print("\n<===== Testing GenTheoreticalSpectrum with linear coursera test input =====>\n")
+        peptide = 'LEQN'
+        result = utils.GenTheoreticalSpectrum(peptide, cyclic=False)
+        expected_result = [0, 113, 114, 128, 129, 242, 242, 257, 370, 371, 484]
+        self.assertEqual(result, expected_result)
+
+    # End of TestApp.test_GenTheoreticalSpectrum()
+
+    def test_CountingPeptidesWithGivenMass(self):
+
+        print("\n<===== Testing CountingPeptidesWithGivenMass with single expected result =====>\n")
+        test_mass = 57
+        expected_result = 1
+        result = utils.CountingPeptidesWithGivenMass(test_mass)
+        self.assertEqual(result, expected_result)
+
+        print("\n<===== Testing CountingPeptidesWithGivenMass with 3 matches =====>\n")
+        test_mass = 128
+        expected_result = 3
+        result = utils.CountingPeptidesWithGivenMass(test_mass)
+        self.assertEqual(result, expected_result)
+
+        print("\n<===== Testing CountingPeptidesWithGivenMass with 17 matches =====>\n")
+        test_mass = 241
+        expected_result = 17
+        import pdb; pdb.set_trace()
+        result = utils.CountingPeptidesWithGivenMass(test_mass)
+        self.assertEqual(result, expected_result)
+
+        print("\n<===== Testing CountingPeptidesWithGivenMass with coursera test input =====>\n")
+        import pdb; pdb.set_trace()
+        test_mass = 1024
+        expected_result = 14712706211
+        result = utils.CountingPeptidesWithGivenMass(test_mass)
+        self.assertEqual(result, expected_result)
+
+    # End of test_CountingPeptidesWithGivenMass()
+
+    def test_CyclopeptideSequencing(self):
+
+        print("\n<===== Testing CyclopeptideSequencing with coursera test input =====>\n")
+        spectrum = [0, 113, 128, 186, 241, 299, 314, 427]
+        expected_results = [
+                [186, 128, 113],
+                [186, 113, 128],
+                [128, 186, 113],
+                [128, 113, 186],
+                [113, 186, 128],
+                [113, 128, 186],
+            ]
+        results = utils.CyclopeptideSequencing(spectrum)
+        self.assertEqual(len(results), len(expected_results))
+        for peptide in results:
+            self.assertTrue(peptide in expected_results)
+            results.remove(peptide)
+            expected_results.remove(peptide)
+
+    # End of test_CyclopeptideSequencing()
 
 # End of class TestApp
 
